@@ -9,9 +9,9 @@
 !out/*
 
 # Exclude specific files
-!dkg.circom
-!dkg.input.json
-!makefile
+!dnd.circom
+!dnd.input.json
+!Makefile
 !README.md
 !package.json
 
