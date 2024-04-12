@@ -1,0 +1,18 @@
+# Ignore everything except src directory and its contents
+*
+!src/
+!src/*
+!src/**
+
+# Exclude out directory and its contents
+!out/
+!out/*
+
+# Exclude specific files
+!dkg.circom
+!dkg.input.json
+!makefile
+!README.md
+!package.json
+
+!.gitignore
