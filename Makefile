@@ -21,25 +21,53 @@ $(compile_outputs): $(circom)
 	circom $< --r1cs --wasm
 
 $(ptau):
-	snarkjs powersoftau new bn128 12 tmp.ptau
-	snarkjs powersoftau contribute tmp.ptau tmp1.ptau --name="First contribution"   -v -e='0xccc49d88284aaf7aeb9889c5a8c86dadb00ce1e74f7eaec8bc51193e228ea0f9'
-	# snarkjs powersoftau contribute tmp1.ptau tmp2.ptau --name="Second contribution" -v -e='0x6944633152399443603624224235593869484651980060375192863695182892'
-
-	# snarkjs powersoftau export challenge tmp2.ptau challenge_0003
-	# snarkjs powersoftau challenge contribute bn128 challenge_0003 response_0003 -e="bullshit"
-	# snarkjs powersoftau import response tm2.ptau response_0003 tmp3.ptau -n="Third contribution name"
-
+	# new power of tau
+	snarkjs powersoftau new bn128 7 tmp.ptau
+	
+	# contribute to the ceremony
+	snarkjs powersoftau contribute tmp.ptau tmp1.ptau --name="First contribution"   -v -e='r'
 	rm tmp.ptau
-	# rm tmp1.ptau
-	# rm tmp2.ptau
-
-	snarkjs powersoftau prepare phase2 tmp1.ptau $(ptau) -v
+	
+	# second contribute
+	snarkjs powersoftau contribute tmp1.ptau tmp2.ptau --name="Second contribution" -v -e='r'
 	rm tmp1.ptau
 
+	# third contribute using third party software
+	snarkjs powersoftau export challenge tmp2.ptau challenge_0003
+	snarkjs powersoftau challenge contribute bn128 challenge_0003 response_0003 -e="r"
+	snarkjs powersoftau import response tmp2.ptau response_0003 tmp3.ptau -n="Third contribution name"
+	rm tmp2.ptau
+
+	
+	# contribute beacon to end phrase 1 
+	snarkjs powersoftau beacon tmp3.ptau tmp3_beacon.ptau 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f 10 -n="Final Beacon"
+	rm tmp3.ptau
+
+	# phrase 2 
+	snarkjs powersoftau prepare phase2 tmp3_beacon.ptau $(ptau) -v
+
 $(keys): $(ptau) $(r1cs)
+	# setup
 	snarkjs groth16 setup $(r1cs) $(ptau) tmp.zkey
-	snarkjs zkey contribute tmp.zkey $(pk) --name="1st Contributor Name" -e='r'
+
+	# first contribute
+	snarkjs zkey contribute tmp.zkey  tmp1.zkey --name="1st Contributor Name" -e='r'
 	rm tmp.zkey
+
+	# second contribute
+	snarkjs zkey contribute tmp1.zkey tmp2.zkey --name="Second contribution Name" -v -e="Another random entropy"
+	rm tmp1.zkey
+
+	# third contribute $(pk)
+	snarkjs zkey export bellman tmp2.zkey  challenge_phase2_0003
+	snarkjs zkey bellman contribute bn128 challenge_phase2_0003 response_phase2_0003 -e="some random text"
+	snarkjs zkey import bellman tmp2.zkey response_phase2_0003 tmp3.zkey -n="Third contribution name"
+	rm tmp2.zkey
+
+	# apply beacon
+	snarkjs zkey beacon tmp3.zkey $(pk) 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f 10 -n="Final Beacon phase2"
+	rm tmp3.zkey
+
 	snarkjs zkey export verificationkey $(pk) $(vk)
 
 $(wit): $(pubInputs) $(wasm) $(witness)
