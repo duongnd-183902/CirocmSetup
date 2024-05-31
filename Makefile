@@ -1,5 +1,9 @@
 SHELL = bash
 
+# Define default values for POWEROFTAU and MAIN
+POWEROFTAU = 7
+MAIN ?= Round2
+
 circom = dnd.circom
 r1cs = dnd.r1cs
 wasm = dnd_js/dnd.wasm
@@ -20,15 +24,34 @@ define rHex
 	$(shell cat /dev/urandom | LC_ALL=C tr -dc 'a-f0-9' | fold -w 64 | head -n 1)
 endef
 
-
 all: verify
+
+setPoweroftau:  # Add a prerequisite here
+    ifeq ($(MAIN),Round2)
+        POWEROFTAU := 7
+    endif
+    ifeq ($(MAIN),Reveal)
+        POWEROFTAU := 7
+    endif
+    ifeq ($(MAIN),Withdraw)
+        POWEROFTAU := 7
+    endif
+    ifeq ($(MAIN),Swap)
+        POWEROFTAU := 7
+    endif
+# Target for setting up circom source and generating input file
+setup: setPoweroftau  # Use setPoweroftau as a prerequisite
+	@(cp src/$(MAIN).circom dnd.circom)
+	@(npx ts-node rInput/r$(MAIN).ts)
+	@echo "Power of tau: $(POWEROFTAU)"
+	@echo "Component main: $(MAIN)"
 
 $(compile_outputs): $(circom)
 	circom $< --r1cs --wasm
 
 $(ptau):
 	# new power of tau
-	snarkjs powersoftau new bn128 7 tmp.ptau
+	snarkjs powersoftau new bn128 $(POWEROFTAU) tmp.ptau
 	
 	# contribute to the ceremony
 	$(eval RANDOM_HEX := $(call rHex))
@@ -95,7 +118,7 @@ $(wit): $(pubInputs) $(wasm) $(witness)
 $(prove_outputs): $(wit) $(pk)
 	snarkjs groth16 prove $(pk) $(wit) $(pf) $(inst)
 
-.PHONY = verify clean calldata
+.PHONY = verify clean calldata 
 
 verify: $(pf) $(inst) $(vk)
 	snarkjs groth16 verify $(vk) $(inst) $(pf)
@@ -109,3 +132,7 @@ verifier.sol: $(pk)
 
 calldata: $(wit) $(prove_outputs)
 	snarkjs generatecall
+
+backup:
+	@echo "$(MAIN)"
+	@mkdir out/$(MAIN) && cp dnd.zkey out/$(MAIN)/Prover.zkey
